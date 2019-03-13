@@ -10,9 +10,9 @@ import bs4
 import pandas as pd
 import os
 import json
-# pd.set_option('display.max_columns', None)
-# pd.set_option('display.max_rows', None)
-# pd.set_option('max_colwidth', 1000)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('max_colwidth', 1000)
 
 class GSF:
     def __init__(self, username, password, path, content):
@@ -125,7 +125,7 @@ class GSF:
         for table in tables:
             df_list.append(pd.concat(pd.read_html(table.prettify())))
         self.df = pd.concat(df_list)
-        self.df.drop([0,1,3,4,5], axis=1, inplace=True)
+        self.df.drop(self.df.columns[[0,1,3,4,5,9,10,11]], axis=1, inplace=True)
         self.df.drop([0,1,2,3],axis=0, inplace=True)
         self.df.columns = ['file', 'author', 'time', 'size']
         self.df.reset_index(drop=True, inplace=True)
