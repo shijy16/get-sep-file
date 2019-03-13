@@ -1,0 +1,5 @@
+course-attchment-lookup.ipynb
+.DS_Store
+\.vscode/
+__pycache__/
+.ipynb_checkpoints/
