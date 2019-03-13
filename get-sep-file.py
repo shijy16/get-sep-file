@@ -150,7 +150,7 @@ class GSF:
                 self.df.iloc[index, 4] = fileLink.pop(0)
                 self.df.iloc[index, 5] = os.path.join(path_temp, self.df.iloc[index, 0])
                 self.df.iloc[index, 6] = tag_temp
-        if self.content != 'All': 
+        if str(self.content).lower != 'all': 
             self.df = self.df[self.df['tag']==self.content]
         self.df.reset_index(drop=True, inplace=True)
         # print(self.df)
