@@ -3,3 +3,4 @@ course-attchment-lookup.ipynb
 \.vscode/
 __pycache__/
 .ipynb_checkpoints/
+out.html
