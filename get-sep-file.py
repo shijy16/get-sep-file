@@ -125,7 +125,7 @@ class GSF:
         for table in tables:
             df_list.append(pd.concat(pd.read_html(table.prettify())))
         self.df = pd.concat(df_list)
-        self.df.drop(self.df.columns[[0,1,3,4,5,9,10,11]], axis=1, inplace=True)
+        self.df.drop(self.df.columns[[0,1,3,4,5]], axis=1, inplace=True)
         self.df.drop([0,1,2,3],axis=0, inplace=True)
         self.df.columns = ['file', 'author', 'time', 'size']
         self.df.reset_index(drop=True, inplace=True)
@@ -134,14 +134,14 @@ class GSF:
         self.df['tag'] = '春季'
         for index in self.df.index:
             if str(self.df.iloc[index, 3]) == 'nan':
-                self.df.iloc[index, 0] = self.df.iloc[index, 0][:-3]
-                self.df.iloc[index, 5] = os.path.join(self.path, self.df.iloc[index, 0])
-                path_temp = os.path.join(self.path, self.df.iloc[index, 0])
                 if '秋季' in self.df.iloc[index, 0]:
                     self.df.iloc[index, 6] = '秋季'
                     tag_temp = '秋季'
                 else:
                     tag_temp = '春季'
+                self.df.iloc[index, 0] = self.df.iloc[index, 0][:-10]
+                self.df.iloc[index, 5] = os.path.join(self.path, self.df.iloc[index, 0])
+                path_temp = os.path.join(self.path, self.df.iloc[index, 0])
             elif str(self.df.iloc[index, 3])[-1] == '项':
                 path_temp = os.path.join(path_temp, self.df.iloc[index, 0])
                 self.df.iloc[index, 5] = path_temp
