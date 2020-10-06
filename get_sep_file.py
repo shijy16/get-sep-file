@@ -387,5 +387,5 @@ if __name__ == "__main__":
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
-    # gsf.saveFile()
+    gsf.saveFile()
     gsf.save_homework()
