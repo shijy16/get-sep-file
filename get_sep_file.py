@@ -109,7 +109,6 @@ class GSF:
                 self.course_[link[-6:]] = name[:-7]    
 
 
-    
         # 获取资源按钮链接
         sourceLink = soup.find('a', attrs={'title':'资源 - 上传、下载课件，发布文档，网址等信息'}).get('href')
         source_resp = self.conn.get(
@@ -134,7 +133,6 @@ class GSF:
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
-
 
         print('开始下载...')
         # 打开所有一级文件夹
@@ -183,8 +181,9 @@ class GSF:
         fileLinkTemp = []
         for item in soup.select('tr th a'):
             link = item.get('href')
-            if link.startswith('https://course.ucas.ac.cn/access/content/group'):
-                fileLinkTemp.append(link)
+            if link != None:
+                if link.startswith('https://course.ucas.ac.cn/access/content/group'):
+                    fileLinkTemp.append(link)
         fileLink = fileLinkTemp[::2]
 
         tables = soup.select('table')
@@ -316,12 +315,22 @@ class GSF:
                         info += attr_name.getText().strip() + '\t' + attr.getText().strip() + '\n'
                     attr = soup.find(name='div', attrs={'class':'textPanel'})
                     info += '\n指导\n'
-                    info += attr.get_text().strip()
+                    attr_text = str(attr).replace("<br/>","\n") 
+                    attr_text = attr_text.replace("</p>","\n\n")
+
+                    while True:
+                        index_begin = attr_text.find("<")
+                        index_end = attr_text.find(">",index_begin + 1)
+                        if index_begin == -1:
+                            break
+                        attr_text = attr_text.replace(attr_text[index_begin:index_end+1],"")
+
+                    info += attr_text
                     cur_path = os.path.join(hw_path,title)
                     if not os.path.exists(cur_path):
                         os.makedirs(cur_path)
-                        with open(cur_path + '/info.txt','w',encoding='utf8') as f:
-                            f.write(info)
+                    with open(cur_path + '/info.txt','w',encoding='utf8') as f:
+                        f.write(info)
                     #附件
                     attachment_text = soup.find(name='ul',attrs={'class' :'attachList indnt1'})
                     if attachment_text is not None:
@@ -331,7 +340,7 @@ class GSF:
                             file_name = link.get_text()
                             file_dir = os.path.join(cur_path,file_name)
                             if not os.path.exists(file_dir):
-                                print("\t下载新附件\t "+file_name,end='')
+                                print("\t\t下载新附件\t "+file_name,end='')
                                 sys.stdout.flush()
                                 download_resp = self.conn.get(
                                     url=link.attrs['href'],
@@ -340,10 +349,10 @@ class GSF:
                                 with open(file_dir, 'wb') as f:
                                     for chunk in download_resp.iter_content(chunk_size=1024):
                                         f.write(chunk)
-                                print("\t下载完成")
+                                print("\t\t下载完成")
                                 time.sleep(0.1)
                             else:
-                                print('\t附件已存在\t',file_name)
+                                print('\t\t附件已存在\t',file_name)
 
                     submition_text = soup.find(name='table',attrs={'class' :'attachList listHier indnt1 centerLines'})
                     if submition_text is not None:
@@ -358,7 +367,7 @@ class GSF:
                             file_name = link.get_text()
                             file_dir = os.path.join(submition_path,file_name)
                             if not os.path.exists(file_dir):
-                                print("\t下载提交的作业\t "+file_name,end='')
+                                print("\t\t下载提交的作业\t "+file_name,end='')
                                 sys.stdout.flush()
                                 download_resp = self.conn.get(
                                     url=link.attrs['href'],
@@ -367,10 +376,10 @@ class GSF:
                                 with open(file_dir, 'wb') as f:
                                     for chunk in download_resp.iter_content(chunk_size=1024):
                                         f.write(chunk)
-                                print("\t下载完成")
+                                print("\t\t下载完成")
                                 time.sleep(0.1)
                             else:
-                                print('\t提交的作业已存在\t',file_name)
+                                print('\t\t提交的作业已存在\t',file_name)
                 
 
 if __name__ == "__main__":
@@ -378,5 +387,5 @@ if __name__ == "__main__":
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
-    gsf.saveFile()
+    # gsf.saveFile()
     gsf.save_homework()
