@@ -1,6 +1,8 @@
 # get-sep-file
 同步课程网站课件脚本
 
+和作业，作业附件以及提交的作业
+
 ## Config
 
 `username`：课程网站用户名
