@@ -14,6 +14,7 @@ import json
 from PIL import Image
 import time
 import sys
+import nltk
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -51,7 +52,6 @@ class GSF:
             img = Image.open('verify.jpg')
             img.show()
             verify_code = input("验证码:")
-            print(verify_code)
             # post表单
             test = self.conn.post(
                 url = 'http://sep.ucas.ac.cn/slogin', 
@@ -98,6 +98,7 @@ class GSF:
             headers={'Host': 'course.ucas.ac.cn'},
             verify=False
         )
+
         # 获取所有课程ID
         soup = bs4.BeautifulSoup(courseLinks_resp.text, 'lxml')
         for item in soup.select('ul div a'):
@@ -105,7 +106,10 @@ class GSF:
             name = item.get('title')
             if link.startswith('https://course.ucas.ac.cn/portal/site/1'):
                 self.course[name[:-7]] = name[-2:]
-                self.course_[link[-6:]] = name[:-7]
+                self.course_[link[-6:]] = name[:-7]    
+
+
+    
         # 获取资源按钮链接
         sourceLink = soup.find('a', attrs={'title':'资源 - 上传、下载课件，发布文档，网址等信息'}).get('href')
         source_resp = self.conn.get(
@@ -130,6 +134,8 @@ class GSF:
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
+
+
         print('开始下载...')
         # 打开所有一级文件夹
         for key in self.course_.keys():
@@ -250,10 +256,127 @@ class GSF:
             print("所有的文件已同步至最新！")
         else:
             print("路径不存在！")
+    
+    def init_homework(self):
+        self.hw_main_link = {}
+        self.hw_link = {}
+        for c_id in self.course_.keys():
+            self.hw_link[c_id] = []
+        #获取所有课程的作业主界面链接
+        for c_id in self.course_.keys():
+            # print('https://course.ucas.ac.cn/portal/site/' + str(c_id))
+            course_content = self.conn.get(
+                url = 'https://course.ucas.ac.cn/portal/site/' + str(c_id),
+                headers={'Host': 'course.ucas.ac.cn'},
+                verify=False
+            )
+            course_soup = bs4.BeautifulSoup(course_content.text, 'lxml')
+            self.hw_main_link[c_id] = course_soup.find('a', attrs={'title':'作业 - 在线发布、提交和批改作业'}).get('href')
+            # print(self.hw_main_link[c_id])
+            #获取每个作业链接
+            course_hw_content = self.conn.get(
+                url = self.hw_main_link[c_id],
+                headers={'Host': 'course.ucas.ac.cn'},
+                verify=False
+            )
+            bsObj = bs4.BeautifulSoup(course_hw_content.text, 'lxml')
+            all_links = bsObj.find_all('a')
+            hw_links = []
+            for t in all_links:
+                l = t.get('href')
+                if l.find('assignmentReference') > -1:
+                    hw_links.append(l)
+            self.hw_link[c_id] = hw_links
+    
+    def save_homework(self):
+        print('抓取作业链接...')
+        self.init_homework()
+        print('开始下载作业文件...')
+        if os.path.exists(self.path):
+            for c_id in self.course_.keys():
+                print(self.course_[c_id],':')
+                hw_path = os.path.join(self.path,self.course_[c_id])
+                hw_path = os.path.join(hw_path,'homework')
+                if not os.path.exists(hw_path):
+                    os.makedirs(hw_path)
+                for hw_link in self.hw_link[c_id]:
+                    hw_content = self.conn.get(
+                        url = hw_link,
+                        headers={'Host': 'course.ucas.ac.cn'},
+                        verify=False
+                    )
+                    soup = bs4.BeautifulSoup(hw_content.text, 'lxml')
+                    #作业信息
+                    attr_names = soup.find_all(name='div', attrs={'class' :'itemSummaryHeader'})
+                    attrs = soup.find_all(name='div', attrs={'class' :'itemSummaryValue'})
+                    title = attrs[0].getText().strip().replace('\n','').replace('\r','').replace('\t','')
+                    print('\t',title)
+                    info = '作业信息\n'
+                    for attr_name,attr in zip(attr_names,attrs):
+                        info += attr_name.getText().strip() + '\t' + attr.getText().strip() + '\n'
+                    attr = soup.find(name='div', attrs={'class':'textPanel'})
+                    info += '\n指导\n'
+                    info += attr.get_text().strip()
+                    cur_path = os.path.join(hw_path,title)
+                    if not os.path.exists(cur_path):
+                        os.makedirs(cur_path)
+                        with open(cur_path + '/info.txt','w',encoding='utf8') as f:
+                            f.write(info)
+                    #附件
+                    attachment_text = soup.find(name='ul',attrs={'class' :'attachList indnt1'})
+                    if attachment_text is not None:
+                        attachment_links = attachment_text.find_all('a')
+                        for link in attachment_links:
+                            # print(link.attrs['href'],link.get_text())
+                            file_name = link.get_text()
+                            file_dir = os.path.join(cur_path,file_name)
+                            if not os.path.exists(file_dir):
+                                print("\t下载新附件\t "+file_name,end='')
+                                sys.stdout.flush()
+                                download_resp = self.conn.get(
+                                    url=link.attrs['href'],
+                                    verify=False
+                                )
+                                with open(file_dir, 'wb') as f:
+                                    for chunk in download_resp.iter_content(chunk_size=1024):
+                                        f.write(chunk)
+                                print("\t下载完成")
+                                time.sleep(0.1)
+                            else:
+                                print('\t附件已存在\t',file_name)
+
+                    submition_text = soup.find(name='table',attrs={'class' :'attachList listHier indnt1 centerLines'})
+                    if submition_text is not None:
+                        submition_path = os.path.join(cur_path,'submition')
+                        if not os.path.exists(submition_path):
+                            os.makedirs(submition_path)
+                        submition_links = submition_text.find_all('a')
+                        for link in submition_links:
+                            if link.attrs['href'].find('attachment') == -1:
+                                continue
+                            # print(link.attrs['href'],link.get_text())
+                            file_name = link.get_text()
+                            file_dir = os.path.join(submition_path,file_name)
+                            if not os.path.exists(file_dir):
+                                print("\t下载提交的作业\t "+file_name,end='')
+                                sys.stdout.flush()
+                                download_resp = self.conn.get(
+                                    url=link.attrs['href'],
+                                    verify=False
+                                )
+                                with open(file_dir, 'wb') as f:
+                                    for chunk in download_resp.iter_content(chunk_size=1024):
+                                        f.write(chunk)
+                                print("\t下载完成")
+                                time.sleep(0.1)
+                            else:
+                                print('\t提交的作业已存在\t',file_name)
+                
 
 if __name__ == "__main__":
     with open('config.json',encoding='utf-8') as f:
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
-    gsf.saveFile()
+    #gsf.saveFile()
+    gsf.save_homework()
