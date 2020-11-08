@@ -6,6 +6,7 @@ Email : beibei.feng@outlook.com
 -----
 Description: 
 '''
+import re
 import requests
 import bs4
 import pandas as pd
@@ -15,6 +16,7 @@ from PIL import Image
 import time
 import sys
 import nltk
+import datetime
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -251,7 +253,7 @@ class GSF:
                         print("\t下载完成")
                 else:
                     print('\t文件已存在\t',cur_file)
-                time.sleep(0.1)
+                time.sleep(0.05)
             print("所有的文件已同步至最新！")
         else:
             print("路径不存在！")
@@ -288,6 +290,7 @@ class GSF:
             self.hw_link[c_id] = hw_links
     
     def save_homework(self):
+        self.unfinished_homework = {}
         print('抓取作业链接...')
         self.init_homework()
         print('开始下载作业文件...')
@@ -309,10 +312,16 @@ class GSF:
                     attr_names = soup.find_all(name='div', attrs={'class' :'itemSummaryHeader'})
                     attrs = soup.find_all(name='div', attrs={'class' :'itemSummaryValue'})
                     title = attrs[0].getText().strip().replace('\n','').replace('\r','').replace('\t','')
-                    print('\t',title)
                     info = '作业信息\n'
+                    submited = True
                     for attr_name,attr in zip(attr_names,attrs):
                         info += attr_name.getText().strip() + '\t' + attr.getText().strip() + '\n'
+                        if(attr_name.getText().strip().find('截止') > -1):
+                            due_time = attr.getText().strip()
+                        if(attr_name.getText().strip().find('状态') > -1):
+                            if(attr.getText().strip().find('未提交') > -1 or attr.getText().strip().find('进行中')):
+                                submited = False
+                                self.unfinished_homework[self.course_[c_id]+' '+title] = due_time
                     attr = soup.find(name='div', attrs={'class':'textPanel'})
                     info += '\n指导\n'
                     attr_text = str(attr).replace("<br/>","\n") 
@@ -328,7 +337,13 @@ class GSF:
                     info += attr_text
                     cur_path = os.path.join(hw_path,title)
                     if not os.path.exists(cur_path):
+                        print('\t \033[1;31m 新作业:',title,'截止日期:',due_time,'\033[0m')
                         os.makedirs(cur_path)
+                    else:
+                        if not submited:
+                            print('\t \033[1;31m 未提交：',title,'截止日期:',due_time,'\033[0m')
+                        else:
+                            print('\t ',title)
                     with open(cur_path + '/info.txt','w',encoding='utf8') as f:
                         f.write(info)
                     #附件
@@ -350,7 +365,7 @@ class GSF:
                                     for chunk in download_resp.iter_content(chunk_size=1024):
                                         f.write(chunk)
                                 print("\t\t下载完成")
-                                time.sleep(0.1)
+                                time.sleep(0.05)
                             else:
                                 print('\t\t附件已存在\t',file_name)
 
@@ -377,10 +392,23 @@ class GSF:
                                     for chunk in download_resp.iter_content(chunk_size=1024):
                                         f.write(chunk)
                                 print("\t\t下载完成")
-                                time.sleep(0.1)
+                                time.sleep(0.05)
                             else:
                                 print('\t\t提交的作业已存在\t',file_name)
+        self.homework_summary()
+    
+    def homework_summary(self):
+        if len(self.unfinished_homework.keys()) > 0:
+            print('\033\n[1;31m','*********未完成的作业***********')
+            print('一共' + str(len(self.unfinished_homework.keys())) + '个')
+            for k in self.unfinished_homework.keys():
+                date = re.search(r"(\d{4}-\d{1,2}-\d{1,2})",self.unfinished_homework[k]).group(0)
                 
+                date = datetime.datetime.strptime(date, '%Y-%m-%d')
+                today = datetime.datetime.today()
+                delta = date - today
+                print('\t',k,'\t',self.unfinished_homework[k],'\t还有' + str(delta.days + 1) + '天')
+            print('\033[0m')
 
 if __name__ == "__main__":
     with open('config.json',encoding='utf-8') as f:
