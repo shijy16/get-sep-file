@@ -319,7 +319,7 @@ class GSF:
                         if(attr_name.getText().strip().find('截止') > -1):
                             due_time = attr.getText().strip()
                         if(attr_name.getText().strip().find('状态') > -1):
-                            if(attr.getText().strip().find('未提交') > -1 or attr.getText().strip().find('进行中')):
+                            if(attr.getText().strip().find('未提交') > -1 or attr.getText().strip().find('进行中') > -1):
                                 submited = False
                                 self.unfinished_homework[self.course_[c_id]+' '+title] = due_time
                     attr = soup.find(name='div', attrs={'class':'textPanel'})
