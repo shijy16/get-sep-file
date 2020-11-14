@@ -285,7 +285,7 @@ class GSF:
             hw_links = []
             for t in all_links:
                 l = t.get('href')
-                if l.find('assignmentReference') > -1:
+                if l.find('assignmentReference') > -1 or l.find('submissionId') > -1:
                     hw_links.append(l)
             self.hw_link[c_id] = hw_links
     
@@ -308,6 +308,14 @@ class GSF:
                         verify=False
                     )
                     soup = bs4.BeautifulSoup(hw_content.text, 'lxml')
+                    if hw_link.find('submissionId') > -1:
+                        attr = soup.find_all(name='div', attrs={'class' :'portletBody'})
+                        title = attr[0].select('h3')
+                        # print(title[0])
+                        title = title[0].text.split('-')
+
+                        print('\t  ',title[1].strip()+'：',title[0].strip())
+                        continue
                     #作业信息
                     attr_names = soup.find_all(name='div', attrs={'class' :'itemSummaryHeader'})
                     attrs = soup.find_all(name='div', attrs={'class' :'itemSummaryValue'})
