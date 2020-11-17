@@ -319,7 +319,18 @@ class GSF:
                     #作业信息
                     attr_names = soup.find_all(name='div', attrs={'class' :'itemSummaryHeader'})
                     attrs = soup.find_all(name='div', attrs={'class' :'itemSummaryValue'})
-                    title = attrs[0].getText().strip().replace('\n','').replace('\r','').replace('\t','')
+                    try:
+                        title = attrs[0].getText().strip().replace('\n','').replace('\r','').replace('\t','')
+                    except:
+                        attr = soup.find_all(name='div', attrs={'class' :'portletBody'})
+                        title = attr[0].select('h3')
+                        # print(title[0])
+                        title = title[0].text.split('-')
+                        if(len(title) > 1):
+                            print('\t  ',title[1].strip()+'：',title[0].strip())
+                        else:
+                            print('\t  ',title[0].strip())
+                        continue
                     info = '作业信息\n'
                     submited = True
                     for attr_name,attr in zip(attr_names,attrs):
