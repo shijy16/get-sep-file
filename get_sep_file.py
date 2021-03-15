@@ -4,7 +4,7 @@ Created: 2019-03-09 22:32:21
 Author : Beibei
 Email : beibei.feng@outlook.com
 -----
-Description: 
+Description:
 '''
 import re
 import requests
@@ -56,7 +56,7 @@ class GSF:
             verify_code = input("验证码:")
             # post表单
             test = self.conn.post(
-                url = 'http://sep.ucas.ac.cn/slogin', 
+                url = 'http://sep.ucas.ac.cn/slogin',
                 data={
                     'userName': self.username,
                     'pwd': self.password,
@@ -70,7 +70,7 @@ class GSF:
             print("校园网好啊，不用花流量啊，也不用输验证码呀~")
             # post表单
             self.conn.post(
-                url = 'http://sep.ucas.ac.cn/slogin', 
+                url = 'http://sep.ucas.ac.cn/slogin',
                 data={
                     'userName': self.username,
                     'pwd': self.password,
@@ -85,7 +85,7 @@ class GSF:
             url = 'http://sep.ucas.ac.cn/portal/site/16/801',
             headers={'Host': 'sep.ucas.ac.cn'},
             verify=False
-        )       
+        )
         try:
             soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
             coursePanelLink = soup.select('div h4 a')[0].get('href')
@@ -93,7 +93,7 @@ class GSF:
         except:
             print("验证码有误，请重试~")
             exit()
-        
+
         # 获取资源页面链接
         courseLinks_resp = self.conn.get(
             url = coursePanelLink,
@@ -106,9 +106,9 @@ class GSF:
         for item in soup.select('ul div a'):
             link = item.get('href')
             name = item.get('title')
-            if link.startswith('https://course.ucas.ac.cn/portal/site/1'):
+            if link.startswith('https://course.ucas.ac.cn/portal/site/1') and name.find(self.content) > -1:
                 self.course[name[:-7]] = name[-2:]
-                self.course_[link[-6:]] = name[:-7]    
+                self.course_[link[-6:]] = name[:-7]
 
 
         # 获取资源按钮链接
@@ -131,7 +131,7 @@ class GSF:
             data={
                 'collectionId': '/user/'+collectionId,
                 'sakai_action': 'doShowOtherSites',
-                'sakai_csrf_token': sakai_csrf_token            
+                'sakai_csrf_token': sakai_csrf_token
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
@@ -207,9 +207,26 @@ class GSF:
         self.df['link'] = 0
         self.df['path'] = 0
         self.df['tag'] = '秋季'
-        self.df.dropna(inplace=True) 
-
+        self.df.dropna(inplace=True)
+        # path_temp = None
         for index in self.df.index:
+            # for p in path:
+            #     found = True
+            #     if(len(p.split('/')[-1]) == 0):
+            #         continue
+            #     for idx in range(len(p.split('/')[-1])):
+            #         # print(p.split('/')[-1][idx],self.df.loc[index,'标题'][idx])
+            #         if p.split('/')[-1][idx] != self.df.loc[index,'标题'][idx] and p.split('/')[-1][idx] != '_':
+            #             found = False
+            #             break
+            #     # input()
+            #     if found:
+            #         path_temp = p
+            #         break
+            # if path_temp is None:
+            #     print('!!!!!!!!',self.df.loc[index,'标题'])
+            #     continue
+            # print(self.df.loc[index,'标题'])
             if str(self.df.loc[index, '大小']).endswith('B'):
                 path_temp = path.pop(0)
                 self.df.loc[index, 'link'] = fileLink.pop(0)
@@ -219,14 +236,17 @@ class GSF:
                 self.df.loc[index, 'path'] = os.path.join(self.path, path_temp)
             else:
                 self.df.drop(index, axis=0, inplace=True)
+                # path_temp = None
                 continue
             self.df.loc[index, 'tag'] = self.course[path_temp.strip().split('/')[0]]
+            # path_temp = None
+        # exit(0)
         # print(self.df.index,str(self.content).lower())
-        if str(self.content).lower() != 'all': 
+        if str(self.content).lower() != 'all':
             self.df = self.df[self.df['tag']==self.content]
 
         self.df.reset_index(drop=True, inplace=True)
-        
+
     def saveFile(self):
         if os.path.exists(self.path):
             cur_course = ''
@@ -253,11 +273,11 @@ class GSF:
                         print("\t下载完成")
                 else:
                     print('\t文件已存在\t',cur_file)
-                time.sleep(0.05)
+                time.sleep(0.01)
             print("所有的文件已同步至最新！")
         else:
             print("路径不存在！")
-    
+
     def init_homework(self):
         self.hw_main_link = {}
         self.hw_link = {}
@@ -288,7 +308,7 @@ class GSF:
                 if l.find('assignmentReference') > -1 or l.find('submissionId') > -1:
                     hw_links.append(l)
             self.hw_link[c_id] = hw_links
-    
+
     def save_homework(self):
         self.unfinished_homework = {}
         print('抓取作业链接...')
@@ -343,7 +363,7 @@ class GSF:
                                 self.unfinished_homework[self.course_[c_id]+' '+title] = due_time
                     attr = soup.find(name='div', attrs={'class':'textPanel'})
                     info += '\n指导\n'
-                    attr_text = str(attr).replace("<br/>","\n") 
+                    attr_text = str(attr).replace("<br/>","\n")
                     attr_text = attr_text.replace("</p>","\n\n")
 
                     while True:
@@ -357,6 +377,7 @@ class GSF:
                     cur_path = os.path.join(hw_path,title)
                     if not os.path.exists(cur_path):
                         print('\t \033[1;31m 新作业:',title,'截止日期:',due_time,'\033[0m')
+                        self.unfinished_homework[self.course_[c_id]+' '+title] = due_time
                         os.makedirs(cur_path)
                     else:
                         if not submited:
@@ -415,14 +436,14 @@ class GSF:
                             else:
                                 print('\t\t提交的作业已存在\t',file_name)
         self.homework_summary()
-    
+
     def homework_summary(self):
         if len(self.unfinished_homework.keys()) > 0:
             print('\033\n[1;31m','*********未完成的作业***********')
             print('一共' + str(len(self.unfinished_homework.keys())) + '个')
             for k in self.unfinished_homework.keys():
                 date = re.search(r"(\d{4}-\d{1,2}-\d{1,2})",self.unfinished_homework[k]).group(0)
-                
+
                 date = datetime.datetime.strptime(date, '%Y-%m-%d')
                 today = datetime.datetime.today()
                 delta = date - today
