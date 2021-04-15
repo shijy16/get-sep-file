@@ -41,8 +41,13 @@ class GSF:
         )
 
         soup = bs4.BeautifulSoup(temp_login.text, 'lxml')
-        verifyText = soup.select('div label')[-1].getText()
-        if verifyText == '验证码':
+        temp = soup.select('div label')
+        need_verify = False
+        for i in soup.select('div label'):
+            if i.getText() == '验证码':
+                need_verify = True
+                break
+        if need_verify:
             verify = self.conn.get(
                 url = 'http://sep.ucas.ac.cn/changePic',
                 headers={'Host': 'sep.ucas.ac.cn'},
